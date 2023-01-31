@@ -20,28 +20,47 @@ class JsonToCSVConverter {
         if (file.exists() && file.isDirectory) {
             val files = file.listFiles()
             val sortedFiles = files?.sortedBy { it.name }
-            // Print the file names
-            /*if (sortedFiles != null) {
-                for (file2 in sortedFiles) {
-                    println(file2.name)
-                }
-            }*/
-            //val question = convertSingleFile(sortedFiles);
-            val questions = sortedFiles?.map { convertSingleFile(it) }
-            toCSVFile(questions)
 
+            val questions = sortedFiles?.map { convertSingleFile(it) }
+            validateQuestionPojo(questions)
+            //toCSVFile(questions)
             val fileNames = sortedFiles?.map { it.name }
-            //println("File names: $fileNames")
             val fileNameString = fileNames?.joinToString(",")
             return ResponseEntity.ok(fileNameString)
         }
         return ResponseEntity.badRequest().body("Invalid file location")
     }
 
+    private fun validateQuestionPojo(questions: List<FromJson>?) {
+        if (questions != null) {
+            for (question in questions) {
+                println("\n validating  : "+question.number)
+                verifyValidOptions(question.options)
+            }
+        }
+    }
+
+    private fun verifyValidOptions(options: Set<JsonOptions>) {
+        //println("\n Options : "+options.size)
+        var i :Int = 0;
+        for (option in options) {
+            i++
+            if (option.optionNo.toInt() != i) {
+               println("something is wrong :: option is"+option.optionNo + "but counter is "+ i)
+           }
+        }
+    }
+
     private fun convertSingleFile(file: File?): FromJson {
-        val gson = Gson()
-        val jsonString = file?.readText()
-        return gson.fromJson(jsonString, FromJson::class.java)
+        try {
+            val gson = Gson()
+            val jsonString = file?.readText()
+            return gson.fromJson(jsonString, FromJson::class.java)
+        } catch (e: Exception) {
+            // Handle exception, e.g. print error message
+            println("Error occurred while reading JSON file: ${e.message}")
+            throw Exception()
+        }
     }
 
     private fun getQuestionTypeFromOptions(type: String): String {
@@ -72,14 +91,10 @@ class JsonToCSVConverter {
             "Correct Response","Explanation","Knowledge Area")
         csvWriter.writeNext(header)
 
-
         if (questionsFromJson != null) {
             for (question in questionsFromJson) {
-                //Which of the following are woodwind instruments?,multi-select,
-                // Oboe,Trumpet,Flute,Bassoon,Violin,Timpani,,,,,,,,,,
-                // "1,3,4",
-                // "Clarinets, flutes, oboes, bassoons, contrabasoons, and English horns make up the core of the woodwind family. Trumpets are wind instruments but not woodwinds - they belong to the brass family. Violins and timpani are strings and percussion, respectively.",
-                // Music
+                println("\n Currently processing : "+question.number)
+                println("\n Options : "+question.options.size)
                 val questionType = getQuestionTypeFromOptions(question.options.first().type)
                 val questionData = arrayOf(question.question, questionType,
                     getAnswerOptions(1, question.options),
